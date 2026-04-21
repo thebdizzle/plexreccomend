@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What to Watch — Plex Recommender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lato:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0d;
+      --bg2: #111116;
+      --bg3: #18181f;
+      --border: rgba(255,255,255,0.06);
+      --border2: rgba(255,255,255,0.12);
+      --text: #ece9e2;
+      --muted: #7a7686;
+      --muted2: #b0abbe;
+      --accent: #e8c96a;
+      --accent-dim: rgba(232,201,106,0.12);
+      --red: #e05a5a;
+      --green: #4caf82;
+      --radius: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Lato', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 2.5rem 2.5rem 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+
+    .logo-eyebrow {
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.3rem;
+    }
+
+    .logo-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3.2rem;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: 0.4rem;
+    }
+
+    .conn-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.35rem 0.75rem;
+    }
+
+    .conn-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .conn-dot.ok { background: var(--green); }
+
+    .settings-btn {
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 0.4rem 0.9rem;
+      color: var(--muted2);
+      font-family: 'Lato', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .divider {
+      position: relative;
+      z-index: 1;
+      height: 1px;
+      background: var(--border);
+      margin: 1.5rem 0 0;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2.5rem 2.5rem 4rem;
+    }
+
+    .search-wrap {
+      margin-bottom: 2.5rem;
+    }
+
+    .search-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .search-row input {
+      flex: 1;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 0.9rem 1.1rem;
+      color: var(--text);
+      font-family: 'Lato', sans-serif;
+      font-size: 1rem;
+      font-weight: 300;
+      outline: none;
+      transition: border-color 0.15s;
+      min-width: 0;
+    }
+    .search-row input::placeholder { color: var(--muted); }
+    .search-row input:focus { border-color: rgba(232,201,106,0.4); }
+
+    .search-btn {
+      background: var(--accent);
+      color: #1a1400;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0 1.6rem;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .search-btn:hover { opacity: 0.88; }
+    .search-btn:active { transform: scale(0.97); }
+    .search-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .library-stat {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    .library-stat strong { color: var(--accent); font-weight: 400; }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--muted2);
+      min-height: 1.4em;
+      margin-bottom: 1.2rem;
+    }
+
+    .spinner {
+      width: 13px; height: 13px;
+      border: 1.5px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.55s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: rgba(224,90,90,0.07);
+      border: 1px solid rgba(224,90,90,0.2);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      font-size: 0.82rem;
+      color: #e08a8a;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    /* Seed movie banner */
+    .seed-banner {
+      display: none;
+      background: var(--accent-dim);
+      border: 1px solid rgba(232,201,106,0.2);
+      border-radius: var(--radius);
+      padding: 0.85rem 1.1rem;
+      margin-bottom: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .seed-banner.hidden { display: none; }
+
+    .seed-poster {
+      width: 44px;
+      height: 66px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--bg3);
+    }
+
+    .seed-info { flex: 1; min-width: 0; }
+    .seed-label { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.2rem; }
+    .seed-title { font-size: 1rem; font-weight: 400; }
+    .seed-meta { font-size: 0.75rem; color: var(--muted2); margin-top: 0.15rem; }
+
+    /* Results section header */
+    .results-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .results-header h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.3rem;
+      letter-spacing: 0.08em;
+      font-weight: 400;
+      color: var(--muted2);
+    }
+
+    .results-count {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Movie grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 1rem;
+    }
+
+    .movie-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: default;
+      transition: border-color 0.2s, transform 0.2s;
+      animation: fadeUp 0.35s ease both;
+    }
+    .movie-card:hover {
+      border-color: var(--border2);
+      transform: translateY(-3px);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .movie-poster-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: var(--bg3);
+      overflow: hidden;
+    }
+
+    .movie-poster {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s;
+    }
+    .movie-card:hover .movie-poster { transform: scale(1.03); }
+
+    .poster-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-align: center;
+      padding: 0.5rem;
+    }
+    .poster-fallback-icon { font-size: 1.8rem; opacity: 0.2; }
+
+    .score-badge {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 5px;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.7rem;
+      color: var(--accent);
+      font-weight: 400;
+      backdrop-filter: blur(4px);
+    }
+
+    .movie-body {
+      padding: 0.7rem 0.8rem 0.8rem;
+    }
+
+    .movie-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      line-height: 1.2;
+      margin-bottom: 0.2rem;
+      color: var(--text);
+    }
+
+    .movie-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    .movie-overview {
+      font-size: 0.72rem;
+      color: var(--muted2);
+      line-height: 1.55;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Empty state */
+    #empty-state {
+      padding: 5rem 0 3rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-icon {
+      font-size: 3.5rem;
+      opacity: 0.1;
+      line-height: 1;
+    }
+
+    #empty-state p {
+      font-size: 0.85rem;
+      line-height: 1.7;
+      max-width: 340px;
+    }
+
+    #empty-state strong { color: var(--accent); font-weight: 400; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      backdrop-filter: blur(3px);
+    }
+    .modal-backdrop.hidden { display: none; }
+
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+    }
+
+    .modal-eyebrow {
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+    }
+
+    .modal h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 0.05em;
+      font-weight: 400;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal > p {
+      font-size: 0.8rem;
+      color: var(--muted2);
+      line-height: 1.6;
+      margin-bottom: 1.6rem;
+    }
+
+    .field { margin-bottom: 1.1rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 0.7rem 0.9rem;
+      color: var(--text);
+      font-family: 'Lato', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus { border-color: rgba(232,201,106,0.4); }
+    .field input::placeholder { color: var(--muted); }
+
+    .field-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      line-height: 1.5;
+    }
+    .field-hint a { color: var(--accent); text-decoration: none; }
+
+    .modal-btns {
+      display: flex;
+      gap: 0.6rem;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 0.55rem 1.1rem;
+      color: var(--muted2);
+      font-family: 'Lato', sans-serif;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+
+    .btn-primary {
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.55rem 1.4rem;
+      color: #1a1400;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .no-matches {
+      padding: 2rem 0;
+      font-size: 0.85rem;
+      color: var(--muted2);
+      line-height: 1.7;
+    }
+    .no-matches strong { color: var(--text); font-weight: 400; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-eyebrow">Plex Library</span>
+    <span class="logo-title">What to Watch</span>
+  </div>
+  <div class="header-right">
+    <div class="conn-pill">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">Not connected</span>
+    </div>
+    <button class="settings-btn" id="settings-btn">Settings</button>
+  </div>
+</header>
+<div class="divider"></div>
+
+<main>
+  <div class="search-wrap">
+    <span class="search-label">Find movies like…</span>
+    <div class="search-row">
+      <input
+        type="text"
+        id="movie-input"
+        placeholder="e.g. Parasite, The Lighthouse, Mad Max: Fury Road…"
+        autocomplete="off"
+        disabled
+      />
+      <button class="search-btn" id="search-btn" disabled>Search</button>
+    </div>
+    <div class="library-stat" id="library-stat"></div>
+  </div>
+
+  <div class="status-line" id="status-line"></div>
+  <div class="error-box" id="error-box" style="display:none"></div>
+
+  <div class="seed-banner hidden" id="seed-banner">
+    <img class="seed-poster" id="seed-poster" src="" alt="" />
+    <div class="seed-info">
+      <div class="seed-label">Matching the vibe of</div>
+      <div class="seed-title" id="seed-title"></div>
+      <div class="seed-meta" id="seed-meta"></div>
+    </div>
+  </div>
+
+  <div id="results-header-wrap" style="display:none">
+    <div class="results-header">
+      <h2>In Your Library</h2>
+      <span class="results-count" id="results-count"></span>
+    </div>
+  </div>
+
+  <div class="results-grid" id="results-grid"></div>
+
+  <div id="empty-state">
+    <div class="empty-icon">🎬</div>
+    <p>Connect your Plex library and enter a film you've enjoyed.<br>We'll find <strong>unwatched movies</strong> in your collection with a similar vibe.</p>
+  </div>
+</main>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop hidden" id="modal-backdrop">
+  <div class="modal">
+    <div class="modal-eyebrow">Configuration</div>
+    <h2>Connect Sources</h2>
+    <p>Your Plex token lives in Netlify's environment variables — you don't enter it here. Just add your free TMDB key below and you're set.</p>
+
+    <div class="field">
+      <label>TMDB API Key <span style="font-weight:300;text-transform:none;letter-spacing:0">(Read Access Token)</span></label>
+      <input type="password" id="cfg-tmdb-key" placeholder="eyJhbGciOiJIUzI1NiJ9…" />
+      <div class="field-hint">
+        Free at <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a> — use the long "API Read Access Token", not the short API key.
+      </div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-ghost" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-save">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PLEX_PROXY = '/.netlify/functions/plex';
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
+const TMDB_IMG_ORIG = 'https://image.tmdb.org/t/p/w185';
+
+let config = {
+  tmdbKey: localStorage.getItem('tmdbKey') || '',
+  plexServer: localStorage.getItem('plexServer') || '',
+};
+
+let libraryMovies = [];
+let isSearching = false;
+
+const $ = id => document.getElementById(id);
+
+// ── UI helpers ────────────────────────────────────────────────
+function setStatus(msg, spinner = false) {
+  $('status-line').innerHTML = spinner
+    ? `<div class="spinner"></div><span>${msg}</span>`
+    : msg ? `<span>${msg}</span>` : '';
+}
+
+function showError(msg) {
+  const el = $('error-box');
+  el.innerHTML = msg;
+  el.style.display = 'block';
+}
+
+function clearError() { $('error-box').style.display = 'none'; }
+
+function setConnected(ok, label) {
+  $('conn-dot').className = 'conn-dot' + (ok ? ' ok' : '');
+  $('conn-label').textContent = label;
+}
+
+// ── Plex API ──────────────────────────────────────────────────
+let plexServerUrl = '';
+let plexAccessToken = '';
+
+async function discoverServer() {
+  const res = await fetch(`${PLEX_PROXY}?action=discover`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Discovery failed (${res.status})`);
+  plexServerUrl = data.serverUrl;
+  plexAccessToken = data.accessToken || '';
+  return data.name;
+}
+
+async function plexFetch(path) {
+  if (!plexServerUrl) throw new Error('Server not discovered yet.');
+  const params = new URLSearchParams({ path, serverUrl: plexServerUrl });
+  if (plexAccessToken) params.set('accessToken', plexAccessToken);
+  const res = await fetch(`${PLEX_PROXY}?${params}`);
+  if (!res.ok) {
+    let detail = '';
+    try { const b = await res.json(); detail = b.error ? `: ${b.error}` : ''; } catch {}
+    throw new Error(`Plex error ${res.status}${detail}`);
+  }
+  return res.json();
+}
+
+// Only store the fields we actually need — keeps cache small
+function stripMovie(m) {
+  return {
+    ratingKey: m.ratingKey,
+    title: m.title,
+    year: m.year,
+    viewCount: m.viewCount || 0,
+  };
+}
+
+const CACHE_KEY = 'plexLibraryCache';
+const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, movies } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return movies;
+  } catch { return null; }
+}
+
+function saveCache(movies) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), movies }));
+  } catch (e) {
+    // localStorage quota exceeded — skip caching silently
+    console.warn('Could not cache library:', e.message);
+  }
+}
+
+async function fetchAllMovies(sectionKey) {
+  // Fetch everything in one request — Plex supports large container sizes
+  const data = await plexFetch(
+    `/library/sections/${sectionKey}/all?type=1&X-Plex-Container-Start=0&X-Plex-Container-Size=100000`
+  );
+  return (data?.MediaContainer?.Metadata || []).map(stripMovie);
+}
+
+async function loadPlexLibrary(forceRefresh = false) {
+  setStatus('Discovering Plex server…', true);
+  clearError();
+  setConnected(false, 'Connecting…');
+
+  try {
+    // Check cache first (skip on force refresh)
+    if (!forceRefresh) {
+      const cached = loadCache();
+      if (cached) {
+        libraryMovies = cached.filter(m => !m.viewCount);
+        setConnected(true, 'Plex (cached)');
+        $('library-stat').innerHTML = `<strong>${libraryMovies.length}</strong> unwatched movies &nbsp;<a href="#" id="refresh-link" style="color:var(--muted);font-size:0.7em">↻ refresh</a>`;
+        $('movie-input').disabled = false;
+        $('search-btn').disabled = !config.tmdbKey;
+        $('empty-state').style.display = config.tmdbKey ? 'none' : 'flex';
+        setStatus('');
+        document.getElementById('refresh-link')?.addEventListener('click', e => {
+          e.preventDefault();
+          localStorage.removeItem(CACHE_KEY);
+          loadPlexLibrary(true);
+        });
+        if (!config.tmdbKey) showError('Library loaded! Add your TMDB API key in Settings to enable recommendations.');
+        return;
+      }
+    }
+
+    const serverName = await discoverServer();
+    setStatus(`Connected to "${serverName}" — fetching library (this may take a minute for large libraries)…`, true);
+
+    const sectionsData = await plexFetch('/library/sections');
+    const sections = sectionsData?.MediaContainer?.Directory || [];
+    const movieSections = sections.filter(s => s.type === 'movie');
+    if (!movieSections.length) throw new Error('No movie libraries found on this server.');
+
+    let all = [];
+    for (const s of movieSections) {
+      if (movieSections.length > 1) setStatus(`Fetching "${s.title}"…`, true);
+      const movies = await fetchAllMovies(s.key);
+      all = all.concat(movies);
+    }
+
+    // Cache the stripped library
+    saveCache(all);
+
+    libraryMovies = all.filter(m => !m.viewCount);
+    const total = all.length;
+    const unwatched = libraryMovies.length;
+
+    setConnected(true, serverName);
+    $('library-stat').innerHTML = `<strong>${unwatched}</strong> unwatched of ${total} movies &nbsp;<a href="#" id="refresh-link" style="color:var(--muted);font-size:0.7em">↻ refresh</a>`;
+    $('movie-input').disabled = false;
+    $('search-btn').disabled = !config.tmdbKey;
+    $('empty-state').style.display = config.tmdbKey ? 'none' : 'flex';
+    setStatus('');
+
+    document.getElementById('refresh-link')?.addEventListener('click', e => {
+      e.preventDefault();
+      localStorage.removeItem(CACHE_KEY);
+      loadPlexLibrary(true);
+    });
+
+    if (!config.tmdbKey) showError('Library loaded! Add your TMDB API key in Settings to enable recommendations.');
+
+  } catch (err) {
+    setConnected(false, 'Failed');
+    showError(err.message);
+    setStatus('');
+  }
+}
+
+// ── TMDB API ──────────────────────────────────────────────────
+async function tmdbFetch(path) {
+  const res = await fetch(`${TMDB_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${config.tmdbKey}` }
+  });
+  if (!res.ok) throw new Error(`TMDB error ${res.status}`);
+  return res.json();
+}
+
+async function searchTmdb(query) {
+  const data = await tmdbFetch(`/search/movie?query=${encodeURIComponent(query)}&language=en-US&page=1`);
+  return data.results || [];
+}
+
+async function getTmdbRecommendations(movieId) {
+  const [recs, similar] = await Promise.all([
+    tmdbFetch(`/movie/${movieId}/recommendations?language=en-US&page=1`),
+    tmdbFetch(`/movie/${movieId}/similar?language=en-US&page=1`),
+  ]);
+  // Merge and dedupe by id
+  const all = [...(recs.results || []), ...(similar.results || [])];
+  const seen = new Set();
+  return all.filter(m => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+}
+
+// ── Matching ──────────────────────────────────────────────────
+function normalise(str) {
+  return (str || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function yearMatch(plexYear, tmdbYear, tolerance = 1) {
+  if (!plexYear || !tmdbYear) return true;
+  return Math.abs(parseInt(plexYear) - parseInt(tmdbYear)) <= tolerance;
+}
+
+function matchToLibrary(tmdbMovies) {
+  const results = [];
+
+  for (const tmdb of tmdbMovies) {
+    const tmdbNorm = normalise(tmdb.title);
+    const tmdbYear = tmdb.release_date ? tmdb.release_date.slice(0, 4) : null;
+
+    for (const plex of libraryMovies) {
+      const plexNorm = normalise(plex.title);
+
+      if (tmdbNorm === plexNorm && yearMatch(plex.year, tmdbYear)) {
+        results.push({ plex, tmdb });
+        break;
+      }
+    }
+  }
+
+  return results;
+}
+
+// ── Main search flow ──────────────────────────────────────────
+async function doSearch() {
+  const query = $('movie-input').value.trim();
+  if (!query || isSearching || !libraryMovies.length || !config.tmdbKey) return;
+
+  isSearching = true;
+  $('search-btn').disabled = true;
+  $('results-grid').innerHTML = '';
+  $('results-header-wrap').style.display = 'none';
+  $('seed-banner').classList.add('hidden');
+  clearError();
+
+  try {
+    setStatus(`Searching TMDB for "${query}"…`, true);
+
+    const searchResults = await searchTmdb(query);
+    if (!searchResults.length) throw new Error(`No TMDB results for "${query}". Try the full title.`);
+
+    const seed = searchResults[0];
+    setStatus(`Finding recommendations for ${seed.title}…`, true);
+
+    // Show seed banner
+    $('seed-title').textContent = seed.title;
+    $('seed-meta').textContent = [
+      seed.release_date ? seed.release_date.slice(0, 4) : '',
+      seed.vote_average ? `★ ${seed.vote_average.toFixed(1)}` : ''
+    ].filter(Boolean).join(' · ');
+
+    if (seed.poster_path) {
+      $('seed-poster').src = `${TMDB_IMG_ORIG}${seed.poster_path}`;
+      $('seed-poster').style.display = 'block';
+    } else {
+      $('seed-poster').style.display = 'none';
+    }
+    $('seed-banner').classList.remove('hidden');
+
+    const tmdbRecs = await getTmdbRecommendations(seed.id);
+    setStatus(`Matching ${tmdbRecs.length} recommendations against your library…`, true);
+
+    const matches = matchToLibrary(tmdbRecs);
+
+    setStatus('');
+    $('empty-state').style.display = 'none';
+
+    if (!matches.length) {
+      $('results-header-wrap').style.display = 'block';
+      $('results-count').textContent = '0 matches';
+      $('results-grid').innerHTML = `<div class="no-matches">
+        No matches found in your unwatched library. TMDB found <strong>${tmdbRecs.length}</strong> recommendations for ${seed.title}, but none appear to be in your collection — either you've watched them or they're not in your library yet.
+      </div>`;
+    } else {
+      $('results-header-wrap').style.display = 'block';
+      $('results-count').textContent = `${matches.length} match${matches.length !== 1 ? 'es' : ''}`;
+      renderResults(matches);
+    }
+
+  } catch (err) {
+    showError(err.message);
+    setStatus('');
+    $('empty-state').style.display = 'none';
+  } finally {
+    isSearching = false;
+    $('search-btn').disabled = false;
+  }
+}
+
+function renderResults(matches) {
+  const grid = $('results-grid');
+  grid.innerHTML = '';
+
+  matches.forEach(({ plex, tmdb }, i) => {
+    const card = document.createElement('div');
+    card.className = 'movie-card';
+    card.style.animationDelay = `${i * 0.04}s`;
+
+    const posterUrl = tmdb.poster_path ? `${TMDB_IMG}${tmdb.poster_path}` : null;
+    const year = plex.year || (tmdb.release_date ? tmdb.release_date.slice(0, 4) : '');
+    const rating = tmdb.vote_average ? tmdb.vote_average.toFixed(1) : null;
+    const overview = tmdb.overview || '';
+
+    card.innerHTML = `
+      <div class="movie-poster-wrap">
+        ${posterUrl
+          ? `<img class="movie-poster" src="${posterUrl}" alt="${plex.title}" loading="lazy"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+             <div class="poster-fallback" style="display:none">
+               <div class="poster-fallback-icon">🎬</div>
+               <span>${plex.title}</span>
+             </div>`
+          : `<div class="poster-fallback">
+               <div class="poster-fallback-icon">🎬</div>
+               <span>${plex.title}</span>
+             </div>`
+        }
+        ${rating ? `<div class="score-badge">★ ${rating}</div>` : ''}
+      </div>
+      <div class="movie-body">
+        <div class="movie-title">${plex.title}</div>
+        <div class="movie-meta">${year}</div>
+        ${overview ? `<div class="movie-overview">${overview}</div>` : ''}
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+// ── Settings modal ────────────────────────────────────────────
+function openSettings() {
+  $('cfg-tmdb-key').value = config.tmdbKey;
+  $('cfg-plex-server').value = config.plexServer;
+  $('modal-backdrop').classList.remove('hidden');
+}
+
+$('settings-btn').addEventListener('click', openSettings);
+$('modal-cancel').addEventListener('click', () => $('modal-backdrop').classList.add('hidden'));
+$('modal-backdrop').addEventListener('click', e => {
+  if (e.target === $('modal-backdrop')) $('modal-backdrop').classList.add('hidden');
+});
+
+$('modal-save').addEventListener('click', () => {
+  const tmdb = $('cfg-tmdb-key').value.trim();
+  if (!tmdb) { alert('Please enter your TMDB Read Access Token.'); return; }
+  config = { tmdbKey: tmdb };
+  localStorage.setItem('tmdbKey', tmdb);
+  $('modal-backdrop').classList.add('hidden');
+  loadPlexLibrary();
+});
+
+$('movie-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+$('search-btn').addEventListener('click', doSearch);
+
+// ── Boot — always try to load library on open ─────────────────
+if (config.tmdbKey) {
+  loadPlexLibrary();
+} else {
+  // First visit — open settings to get TMDB key, but still try Plex
+  loadPlexLibrary();
+  setTimeout(() => openSettings(), 600);
+}
+</script>
+</body>
+</html>
